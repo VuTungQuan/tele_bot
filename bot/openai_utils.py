@@ -13,7 +13,7 @@ if config.openai_api_base is not None:
     openai.api_base = config.openai_api_base
 logger = logging.getLogger(__name__)
 
-# OpenAI API completion options
+
 OPENAI_COMPLETION_OPTIONS = {
     "temperature": 0.7,
     "max_tokens": 1000,
@@ -290,7 +290,11 @@ class ChatGPT:
         return answer
 
     def _count_tokens_from_messages(self, messages, answer, model="gpt-3.5-turbo"):
-        encoding = tiktoken.encoding_for_model(model)
+        try:
+            encoding = tiktoken.encoding_for_model(model)
+        except KeyError:
+            # Fallback to cl100k_base for custom models
+            encoding = tiktoken.get_encoding("cl100k_base")
 
         if model == "gpt-3.5-turbo-16k":
             tokens_per_message = 4  # every message follows <im_start>{role/name}\n{content}<im_end>\n
@@ -317,7 +321,9 @@ class ChatGPT:
             tokens_per_message = 3
             tokens_per_name = 1
         else:
-            raise ValueError(f"Unknown model: {model}")
+            # Default for unknown models
+            tokens_per_message = 3
+            tokens_per_name = 1
 
         # input
         n_input_tokens = 0
@@ -346,7 +352,11 @@ class ChatGPT:
         return n_input_tokens, n_output_tokens
 
     def _count_tokens_from_prompt(self, prompt, answer, model="text-davinci-003"):
-        encoding = tiktoken.encoding_for_model(model)
+        try:
+            encoding = tiktoken.encoding_for_model(model)
+        except KeyError:
+            # Fallback to cl100k_base for custom models
+            encoding = tiktoken.get_encoding("cl100k_base")
 
         n_input_tokens = len(encoding.encode(prompt)) + 1
         n_output_tokens = len(encoding.encode(answer))
